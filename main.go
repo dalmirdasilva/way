@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/dalmirdasilva/way/web"
 
-void main() {
-  fmt.Println("hello world")
+func main() {
+  web.InitWayServer()
 }
