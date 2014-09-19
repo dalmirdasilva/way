@@ -22,7 +22,7 @@ func main() {
   log.Println(db.Insert(&node2))
 */
   //db.SelectOne(&node, "select * from nodes where Name=? and Parent=?", node.Id, parent)
-  nodes := lib.GetNodeChainFromUrl("www.google.com/a/b/c/d/")
+  nodes := lib.GetNodesChainFromUrl("www.google.com/a/b/c/d/")
   fmt.Println(nodes[len(nodes) - 1].Name)
   lib.UpdateFeedback(nodes[len(nodes) - 1], -9.0)
 
