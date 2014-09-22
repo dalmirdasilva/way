@@ -92,7 +92,7 @@ func computeNewAverage(currentAverage, feedbackCount, newFeedback float64) float
 }
 
 func generateConditionalNodeChain(names []string, assert func(model.Node) bool) (bool, []model.Node) {
-  nodes := make([]model.Node, 0, 0)
+  nodes := make([]model.Node, len(names))
   parent := model.Node{}
   for _, name := range names {
     node := FindOrCreateNode(name, parent)
@@ -106,5 +106,6 @@ func generateConditionalNodeChain(names []string, assert func(model.Node) bool) 
 }
 
 func decomposeUrl(url string) []string {
-  return strings.Split(strings.Trim(url, "/"), "/")
+  url = strings.TrimSuffix(strings.TrimSuffix(strings.Trim(url, "/"), "https://"), "http://")
+  return strings.Split(url, "/")
 }

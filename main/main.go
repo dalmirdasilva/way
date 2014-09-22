@@ -6,6 +6,7 @@ import (
   "github.com/dalmirdasilva/way/web"
 )
 
+
 func main() {
   persistence.Initialize("mysql", map[string]string {
     "database": "way",
