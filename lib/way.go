@@ -1,20 +1,18 @@
 package lib
 
-import "fmt"
-
 func WayExists(url string) bool {
   exists, _ := TryGenerateAcceptableNodeChain(url)
   if !exists {
-    go func(url string) {
-      GenerateNodeChain(url)
-    }(url)
+    ProcessDelayedJob(func(url interface{}) {
+      GenerateNodeChain(url.(string))
+    }, url)
   }
   return exists
 }
 
 func AddNewFeedback(url string, weight float64) bool {
-  nodes := GenerateNodeChain(url)
+  /*nodes := GenerateNodeChain(url)
   UpdateFeedback(nodes[len(nodes) - 1])
-  PropagateFeedback(nodes)
+  PropagateFeedback(nodes)*/
   return true
 }

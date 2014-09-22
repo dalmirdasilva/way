@@ -7,15 +7,21 @@ import (
   "strconv"
 )
 
-func paramFrom(r *http.Request, name string) []string {
-  query := r.URL.Query()
-  return query[name]
+func RunServer() {
+  http.HandleFunc("/way", wayHandler)
+  http.HandleFunc("/feedback", feedbackHandler)
+  http.ListenAndServe(":8080", nil)
 }
 
 func wayHandler(w http.ResponseWriter, r *http.Request) {
   url := r.URL.Path[1:]
+  url = r.FormValue("url")
+  fmt.Println(url)
+  return
   exists := lib.WayExists(url)
-  fmt.Fprintf(w, "Is the a way? %t!", exists)
+  h := w.Header()
+  h.Set("Content-Type", "application/json; charset=utf-8")
+  fmt.Fprintf(w, "{\"exists\": \"%t\"}", exists)
 }
 
 func feedbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -26,8 +32,7 @@ func feedbackHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprintf(w, "Feedback %v added to %v (%v). Thanks.", weight, url, ok)
 }
 
-func RunServer() {
-  http.HandleFunc("/way", wayHandler)
-  http.HandleFunc("/feedback", feedbackHandler)
-  http.ListenAndServe(":8080", nil)
+func paramFrom(r *http.Request, name string) []string {
+  query := r.URL.Query()
+  return query[name]
 }

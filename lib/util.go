@@ -17,13 +17,15 @@ func IsNodeAcceptable(node model.Node) bool {
 }
 
 func TryGenerateAcceptableNodeChain(url string) (bool, []model.Node) {
-  return generateConditionalNodeChain(url, func(node model.Node) bool {
+  parts := decomposeUrl(url)
+  return generateConditionalNodeChain(parts, func(node model.Node) bool {
     return IsNodeAcceptable(node)
   })
 }
 
 func GenerateNodeChain(url string) []model.Node {
-  _, nodes := generateConditionalNodeChain(url, func(_ model.Node) bool {
+  parts := decomposeUrl(url)
+  _, nodes := generateConditionalNodeChain(parts, func(_ model.Node) bool {
     return true
   })
   return nodes
@@ -35,39 +37,22 @@ func FindOrCreateNode(name string, parent model.Node) model.Node {
   db.SelectOne(&node, "select * from nodes where Name=? and ParentId=?", name, parent.Id)
   if node.Id == 0 {
     node.Name = name
-    InsertAndAssociateNodeToParent(&node, parent)
+    insertAndAssociateNodeToParent(&node, parent)
   }
   return node
 }
 
-func InsertAndAssociateNodeToParent(node *model.Node, parent model.Node) {
-  db := persistence.GetDatabase().DbMap()
-  node.ParentId = parent.Id
-  parent.ChildrenCount++
-  db.Update(&parent)
-  db.Insert(&node)
-}
-
 func UpdateFeedback(node model.Node, feedback float64) {
   db := persistence.GetDatabase().DbMap()
-  avg := node.LocalAverage
+  avg := node.LocalFeedbackAverage
   fc := node.FeedbackCount
   newAvg := computeNewAverage(avg, float64(fc), feedback)
-  node.LocalAverage = newAvg
+  node.LocalFeedbackAverage = newAvg
   node.FeedbackCount = fc + 1
   db.Update(&node)
 }
 
-func UpdateRequestForNodeChain(nodes []model.Node) {
-  db := persistence.GetDatabase().DbMap()
-  for _, node := range nodes {
-    node.RequestCount++
-    db.Update(&node)
-  }
-}
-
-// Propagates the feedback up
-func PropagateFeedback(nodes []model.Node) {
+func propagateFeedback(nodes []model.Node) {
   db := persistence.GetDatabase().DbMap()
   if len(nodes) <= 2 {
     return
@@ -81,25 +66,45 @@ func PropagateFeedback(nodes []model.Node) {
   }
 }
 
-func computeNewAverage(avg, feedbackCount, newFeedback float64) float64 {
-  return (avg * feedbackCount + newFeedback) / feedbackCount + 1
+func updateRequestForNodeChain(nodes []model.Node) {
+  db := persistence.GetDatabase().DbMap()
+  n := len(nodes)
+  for _, node := range nodes {
+    if n--; n > 0 {
+      node.ThroughRequestCount++
+    } else {
+      node.RequestCount++
+    }
+    db.Update(&node)
+  }
 }
 
-func generateConditionalNodeChain(url string, assert func(model.Node) bool) (bool, []model.Node) {
-  urlParts := strings.Split(strings.Trim(url, "/"), "/")
-  partsLen := len(urlParts)
-  nodes := make([]model.Node, partsLen, partsLen)
+func insertAndAssociateNodeToParent(node *model.Node, parent model.Node) {
+  db := persistence.GetDatabase().DbMap()
+  node.ParentId = parent.Id
+  parent.ChildrenCount++
+  db.Update(&parent)
+  db.Insert(&node)
+}
+
+func computeNewAverage(currentAverage, feedbackCount, newFeedback float64) float64 {
+  return (currentAverage * feedbackCount + newFeedback) / feedbackCount + 1
+}
+
+func generateConditionalNodeChain(names []string, assert func(model.Node) bool) (bool, []model.Node) {
+  nodes := make([]model.Node, 0, 0)
   parent := model.Node{}
-  for i, name := range urlParts {
-    if i > 0 {
-      parent = nodes[i - 1]
+  for _, name := range names {
+    node := FindOrCreateNode(name, parent)
+    if !assert(node) {
+      return false, nodes
     }
-    nodes[i] = FindOrCreateNode(name, parent)
-    if !assert(nodes[i]) {
-      return false, nodes[0:i]
-    }
+    nodes = append(nodes, node)
+    parent = node
   }
   return true, nodes
 }
 
-
+func decomposeUrl(url string) []string {
+  return strings.Split(strings.Trim(url, "/"), "/")
+}
